@@ -63,6 +63,9 @@
   }
   label.field { display: block; margin-bottom: 10px; font-size: 12px; color: #333; }
   label.field span { display: block; margin-bottom: 3px; font-weight: 600; color: #444; }
+  label.field.org-check { display: flex; align-items: center; gap: 8px; }
+  label.field.org-check span { margin: 0; display: inline; }
+  label.field.org-check input { width: auto; }
   input[type=text], input[type=number], select, textarea {
     width: 100%; padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px;
     font-size: 13px; font-family: inherit; background: #fff; color: var(--ink);
@@ -221,6 +224,20 @@
       <div class="g-title">Filament catalogue</div>
       <button class="btn block" onclick="openCatalogue()">📚 Manage catalogue <span class="filecount" id="catcount"></span></button>
       <div class="hint">Add new Jaycar filaments here as they’re released, then drop them onto the shelf by code.</div>
+    </div>
+
+    <div class="group">
+      <div class="g-title">Auto-organise</div>
+      <label class="field"><span>Include</span>
+        <select id="org-source">
+          <option value="shelf">Filaments currently on the shelf</option>
+          <option value="catalogue">Whole catalogue</option>
+        </select>
+      </label>
+      <label class="field org-check"><input type="checkbox" id="org-newrow" checked><span>Each type on its own row</span></label>
+      <label class="field"><span>Max slots per row</span><input type="number" id="org-max" value="12" min="1" max="30"></label>
+      <button class="btn primary block" onclick="autoOrganise()">↕ Organise by type &amp; number</button>
+      <div class="hint">Groups filaments by type (PLA, PLA+, PLA Silk…) and sorts each group in ascending CAT-number order. Reorder the type rows afterwards with the ▲▼ buttons below.</div>
     </div>
 
     <div class="group">
@@ -778,6 +795,59 @@ function clearLayout(){
   if(!confirm('Empty every slot? (Rows and catalogue are kept.)')) return;
   state.rows.forEach(r => r.blocks = r.blocks.map(()=>null));
   renderAll();
+}
+
+// ============================================================
+//  AUTO-ORGANISE  (group by type, sort by CAT number)
+// ============================================================
+function codeNum(code){ const m=/(\d+)\s*$/.exec(code||''); return m ? parseInt(m[1],10) : Number.MAX_SAFE_INTEGER; }
+
+function autoOrganise(){
+  const source = document.getElementById('org-source').value;
+  const newRow = document.getElementById('org-newrow').checked;
+  let max = parseInt(document.getElementById('org-max').value,10); if(!(max>0)) max = 12;
+
+  // 1) gather the filaments to lay out
+  let codes;
+  if(source === 'catalogue'){
+    codes = Object.keys(catalogue);
+  } else {
+    codes = [];
+    state.rows.forEach(r => r.blocks.forEach(c => { if(c && catalogue[c] && !codes.includes(c)) codes.push(c); }));
+  }
+  if(codes.length === 0){ toast(source==='catalogue' ? 'Catalogue is empty' : 'No filaments on the shelf yet'); return; }
+
+  // 2) group by type, sort each group by CAT number
+  const groups = {};
+  codes.forEach(c => { const t = catalogue[c].type || 'Uncategorised'; (groups[t] = groups[t] || []).push(c); });
+  Object.values(groups).forEach(list => list.sort((a,b) => codeNum(a)-codeNum(b) || a.localeCompare(b)));
+  // order the groups by their lowest CAT number
+  const groupNames = Object.keys(groups).sort((a,b) => codeNum(groups[a][0]) - codeNum(groups[b][0]) || a.localeCompare(b));
+
+  if(!confirm('Rearrange the shelf: group by type and sort each group by CAT number?\nThis replaces the current layout (the catalogue is not changed).')) return;
+
+  if(newRow){
+    // one type per row (wrapping to extra rows when a group is larger than max)
+    const rows = [];
+    groupNames.forEach(t => {
+      const list = groups[t];
+      const rowsNeeded = Math.ceil(list.length / max);
+      const per = Math.ceil(list.length / rowsNeeded);
+      for(let i=0; i<rowsNeeded; i++){
+        rows.push({ label: t, sublabel: rowsNeeded>1 ? ('pt '+(i+1)) : '', blocks: list.slice(i*per, (i+1)*per) });
+      }
+    });
+    state.rows = rows;
+  } else {
+    // reflow into the existing rows/slots, in grouped+sorted order
+    const flat = [];
+    groupNames.forEach(t => flat.push(...groups[t]));
+    let idx = 0;
+    state.rows.forEach(r => { r.blocks = r.blocks.map(() => idx < flat.length ? flat[idx++] : null); });
+    if(idx < flat.length) toast((flat.length - idx) + ' filament(s) didn’t fit — add rows or slots');
+  }
+  bindInputs(); renderAll();
+  toast('Organised ' + codes.length + ' filaments into ' + groupNames.length + ' groups');
 }
 
 // ============================================================

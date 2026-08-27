@@ -4,6 +4,8 @@ A single-file, no-install web app for laying out and printing a **3D-printer fil
 
 Type a catalogue code into a slot and it auto-fills the colour, filament type and colour name. Drag spools between slots to rearrange, then print a clean **A4 sheet** to stick on your shelf.
 
+**▶ Live app: https://richdavies2005.github.io/filament-shelf-builder/**
+
 ## Why
 
 Filament ranges change constantly — new colours get added, spools get moved around. This lets you re-map your shelf in seconds and reprint the label, instead of hand-editing a document every time.
@@ -12,6 +14,7 @@ Filament ranges change constantly — new colours get added, spools get moved ar
 
 - **Type a code → auto-fill.** Enter a `TLxxxx` code (or search by colour name) and the slot fills in the colour, type tag and name automatically.
 - **Drag to rearrange.** Drag any filament onto another slot to swap their positions.
+- **Auto-organise.** One click groups filaments by type (PLA, PLA+, PLA Silk…) and sorts each group in ascending CAT-number order — either laid out one type per row, or reflowed into your existing rows.
 - **Flexible grid.** Add/remove rows, reorder rows, and set how many slots each row has.
 - **Growing catalogue.** ~79 SUNLU filaments included out of the box. Add, edit or delete filaments as the range changes — light/dark text is auto-chosen from the colour's brightness (with a manual override).
 - **Auto-save + backup.** Your layout and catalogue are saved in the browser automatically. Export/Import a JSON backup to keep it safe or move it to another computer.
