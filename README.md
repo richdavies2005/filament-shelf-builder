@@ -14,11 +14,13 @@ Filament ranges change constantly — new colours get added, spools get moved ar
 
 - **Type a code → auto-fill.** Enter a `TLxxxx` code (or search by colour name) and the slot fills in the colour, type tag and name automatically.
 - **Drag to rearrange.** Drag any filament onto another slot to swap their positions.
-- **Auto-organise.** One click groups filaments by type (PLA, PLA+, PLA Silk…) and sorts each group in ascending CAT-number order — either laid out one type per row, or reflowed into your existing rows.
+- **Auto-organise.** One click groups filaments — by **brand + type**, **type**, or **brand** — and sorts each group in ascending CAT-number order, either one group per row or reflowed into your existing rows.
 - **Flexible grid.** Add/remove rows, reorder rows, and set how many slots each row has.
-- **Growing catalogue.** ~79 SUNLU filaments included out of the box. Add, edit or delete filaments as the range changes — light/dark text is auto-chosen from the colour's brightness (with a manual override).
+- **Built-in catalogue of 230 filaments** scraped from Jaycar NZ — every current **SUNLU** (101), **Elegoo** (108) and **Slic3D** (21) filament, across PLA, PLA+, Silk, Matte, Galaxy, PETG, ABS, ASA, TPU, PVB, wood, glow and carbon-fibre lines. Add, edit or delete filaments as the range changes; light/dark text is auto-chosen from the colour's brightness (with a manual override).
 - **Auto-save + backup.** Your layout and catalogue are saved in the browser automatically. Export/Import a JSON backup to keep it safe or move it to another computer.
 - **Print / Save as PDF.** One click produces an A4 portrait sheet ready to print.
+
+> **About the colours:** Jaycar doesn't publish a hex value for each filament, so the block colours in the built-in catalogue are **approximated from each product's colour name** (the ~79 original SUNLU colours keep their hand-tuned values). Every colour is editable in the catalogue manager, so tweak any that don't match the real spool.
 
 ## Usage
 

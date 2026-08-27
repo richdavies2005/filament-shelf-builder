@@ -169,7 +169,8 @@
   .cat-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); padding: 6px 8px; border-bottom: 2px solid var(--border); position: sticky; top: 0; background: #fff; }
   .cat-table td { padding: 5px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
   .cat-table .sw { width: 22px; height: 22px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.15); }
-  .addform { display: grid; grid-template-columns: 90px 120px 1fr 54px 96px auto; gap: 8px; align-items: end; padding: 12px; background: #f7f9fc; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
+  .addform { display: grid; grid-template-columns: 84px 100px 108px 1fr 50px 84px auto; gap: 8px; align-items: end; padding: 12px; background: #f7f9fc; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
+  @media (max-width: 640px){ .addform { grid-template-columns: 1fr 1fr; } }
   .addform label.field { margin: 0; }
   .addform input[type=color] { width: 100%; height: 34px; padding: 2px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #10233f; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 100; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; }
@@ -234,7 +235,14 @@
           <option value="catalogue">Whole catalogue</option>
         </select>
       </label>
-      <label class="field org-check"><input type="checkbox" id="org-newrow" checked><span>Each type on its own row</span></label>
+      <label class="field"><span>Group by</span>
+        <select id="org-groupby">
+          <option value="brandtype">Brand + type</option>
+          <option value="type">Type only</option>
+          <option value="brand">Brand only</option>
+        </select>
+      </label>
+      <label class="field org-check"><input type="checkbox" id="org-newrow" checked><span>Each group on its own row</span></label>
       <label class="field"><span>Max slots per row</span><input type="number" id="org-max" value="12" min="1" max="30"></label>
       <button class="btn primary block" onclick="autoOrganise()">↕ Organise by type &amp; number</button>
       <div class="hint">Groups filaments by type (PLA, PLA+, PLA Silk…) and sorts each group in ascending CAT-number order. Reorder the type rows afterwards with the ▲▼ buttons below.</div>
@@ -289,6 +297,7 @@
     <div class="m-body">
       <div class="addform">
         <label class="field"><span>Code</span><input type="text" id="add-code" placeholder="TL6039"></label>
+        <label class="field"><span>Brand</span><input type="text" id="add-brand" placeholder="SUNLU" list="brandlist"></label>
         <label class="field"><span>Type</span><input type="text" id="add-type" placeholder="PLA SILK" list="typelist"></label>
         <label class="field"><span>Colour name</span><input type="text" id="add-name" placeholder="Red Copper"></label>
         <label class="field"><span>Colour</span><input type="color" id="add-bg" value="#c0392b"></label>
@@ -298,6 +307,7 @@
         <button class="btn primary" id="add-btn" onclick="saveFilament()">Add</button>
       </div>
       <datalist id="typelist"></datalist>
+      <datalist id="brandlist"></datalist>
       <input type="text" id="cat-filter" placeholder="Filter catalogue…" oninput="renderCatTable()" style="margin-bottom:10px">
       <div style="max-height:46vh; overflow:auto; border:1px solid var(--border); border-radius:8px;">
         <table class="cat-table" id="cat-table"></table>
@@ -314,96 +324,240 @@
 
 <script>
 // ============================================================
-//  SEED CATALOGUE  (from the SUNLU shelf map)
+//  SEED CATALOGUE  (Jaycar NZ: SUNLU, Elegoo, Slic3D filaments)
+//  Colours are approximated from each product's colour name; edit freely.
 // ============================================================
 const SEED_CATALOGUE = {
-  // PLA SILK
-  TL6039:{type:"PLA SILK",name:"Red Copper",bg:"#a05a30"},
-  TL6040:{type:"PLA SILK",name:"Silver",bg:"#c0c4c8"},
-  TL6041:{type:"PLA SILK",name:"White",bg:"#f0f0f0"},
-  TL6236:{type:"PLA SILK",name:"Light Gold",bg:"#e0c878"},
-  TL6237:{type:"PLA SILK",name:"Red",bg:"#c02020"},
-  TL6238:{type:"PLA SILK",name:"Black",bg:"#1a1a1a"},
-  TL6240:{type:"PLA SILK",name:"Green",bg:"#208840"},
-  TL6241:{type:"PLA SILK",name:"Yellow",bg:"#f0d020"},
-  TL6242:{type:"PLA SILK",name:"Pink",bg:"#f0a0b8"},
-  TL6243:{type:"PLA SILK",name:"Grey",bg:"#808080"},
-  TL6244:{type:"PLA SILK",name:"Brass",bg:"#b8944a",text:"dk"},
-  TL6246:{type:"PLA SILK",name:"Dual Blk Blue",bg:"#182848"},
-  TL6248:{type:"PLA SILK",name:"Dual Blk Purple",bg:"#281838"},
-  TL6249:{type:"PLA SILK",name:"Dual Blk Gold",bg:"#302818"},
-  TL6250:{type:"PLA SILK",name:"Dual Pink Gold",bg:"#c08890"},
-  TL6251:{type:"PLA SILK",name:"Dual Red Blue",bg:"#601830"},
-  TL6252:{type:"PLA SILK",name:"Dual Grn Purple",bg:"#204028"},
-  TL6253:{type:"PLA SILK",name:"Dual Blk White",bg:"#282828"},
-  TL6259:{type:"PLA SILK",name:"Tri Blu Grn Pur",bg:"#203858"},
-  TL6260:{type:"PLA SILK",name:"Tri Red Yel Grn",bg:"#a04818"},
-  TL6261:{type:"PLA SILK",name:"Tri Org Blu Grn",bg:"#a05818"},
-  TL6262:{type:"PLA SILK",name:"Tri Red Yel Blu",bg:"#902828"},
-  TL6263:{type:"PLA SILK",name:"Tri Blk Gld Pur",bg:"#302038"},
-  TL6245:{type:"PLA SILK",name:"Candy Dandy",bg:"#d05888"},
-  TL6239:{type:"PLA SILK",name:"Tri Blk Gld Pur",bg:"#302038"},
-  TL6247:{type:"PLA SILK",name:"Dual Blk Green",bg:"#182818"},
-  // RAINBOW
-  TL6254:{type:"RAINBOW",name:"Rainbow 01",bg:"#7030a0"},
-  TL6044:{type:"RAINBOW",name:"Rainbow 02",bg:"#2060c0"},
-  TL6255:{type:"RAINBOW",name:"Rainbow 03",bg:"#208840"},
-  TL6256:{type:"RAINBOW",name:"Rainbow 04",bg:"#e8c840"},
-  TL6257:{type:"RAINBOW",name:"Rainbow 05",bg:"#e87720"},
-  TL6258:{type:"RAINBOW",name:"Rainbow 06",bg:"#c02020"},
-  // PLA + 2.0
-  TL6216:{type:"PLA + 2.0",name:"White",bg:"#f0f0f0"},
-  TL6217:{type:"PLA + 2.0",name:"Coffee Brown",bg:"#5a3420"},
-  TL6218:{type:"PLA + 2.0",name:"Red",bg:"#c02020"},
-  TL6219:{type:"PLA + 2.0",name:"Yellow",bg:"#f0d020"},
-  TL6220:{type:"PLA + 2.0",name:"Vivid Yellow",bg:"#f8e030"},
-  TL6221:{type:"PLA + 2.0",name:"Green",bg:"#308830"},
-  TL6222:{type:"PLA + 2.0",name:"Cyan",bg:"#30b8c0"},
-  TL6223:{type:"PLA + 2.0",name:"Klein Blue",bg:"#1830a0"},
-  TL6224:{type:"PLA + 2.0",name:"Lavender Purple",bg:"#a888c8"},
-  TL6225:{type:"PLA + 2.0",name:"Magenta",bg:"#c02090"},
-  TL6226:{type:"PLA + 2.0",name:"Black",bg:"#1a1a1a"},
-  TL6227:{type:"PLA + 2.0",name:"Beige",bg:"#e0d0a8"},
-  TL6228:{type:"PLA + 2.0",name:"Grey",bg:"#808080"},
-  TL6229:{type:"PLA + 2.0",name:"Oak",bg:"#b08850"},
-  TL6230:{type:"PLA + 2.0",name:"Olive Green",bg:"#6a7830"},
-  TL6231:{type:"PLA + 2.0",name:"Sunny Orange",bg:"#e87720"},
-  TL6232:{type:"PLA + 2.0",name:"Ceramic",bg:"#e8e0d0"},
-  TL6233:{type:"PLA + 2.0",name:"Bone White",bg:"#e8dcc8"},
-  TL6234:{type:"PLA + 2.0",name:"Midnight",bg:"#181828"},
-  TL6235:{type:"PLA + 2.0",name:"Roasted Chestnut",bg:"#5a3420"},
-  // SLIC3D PLA
-  TL6473:{type:"SLIC3D PLA",name:"Black",bg:"#1a1a1a"},
-  TL6474:{type:"SLIC3D PLA",name:"White",bg:"#f0f0f0"},
-  TL6475:{type:"SLIC3D PLA",name:"Grey",bg:"#808080"},
-  TL6476:{type:"SLIC3D PLA",name:"Red",bg:"#c02020"},
-  TL6477:{type:"SLIC3D PLA",name:"Cocoa Brown",bg:"#5a3420"},
-  TL6478:{type:"SLIC3D PLA",name:"Yellow",bg:"#f0d020"},
-  TL6479:{type:"SLIC3D PLA",name:"Beige",bg:"#e0d0a8"},
-  TL6480:{type:"SLIC3D PLA",name:"Green",bg:"#208840"},
-  TL6481:{type:"SLIC3D PLA",name:"Apple Green",bg:"#78b83a"},
-  TL6482:{type:"SLIC3D PLA",name:"Pink",bg:"#f0a0b8"},
-  // HIGH SPEED PLA
-  TL6200:{type:"HIGH SPEED PLA",name:"Oreo Marble",bg:"#3a3a3a"},
-  TL6201:{type:"HIGH SPEED PLA",name:"Ashen Concrete",bg:"#8a8880"},
-  TL6202:{type:"HIGH SPEED PLA",name:"Shadow Storm",bg:"#282830"},
-  TL6203:{type:"HIGH SPEED PLA",name:"Chestnut Brown",bg:"#6a4830"},
-  TL6204:{type:"HIGH SPEED PLA",name:"Forest Green",bg:"#205828"},
-  TL6205:{type:"HIGH SPEED PLA",name:"Brick Red",bg:"#902828"},
-  // WOOD
-  TL6154:{type:"WOOD",name:"Wood",bg:"#a07840"},
-  TL6155:{type:"WOOD",name:"Maple Wood",bg:"#c8a060"},
-  TL6156:{type:"WOOD",name:"Walnut Wood",bg:"#5a3820"},
-  TL6157:{type:"WOOD",name:"Cherry Wood",bg:"#7a3020"},
-  // GLOW
-  TL6031:{type:"GLOW",name:"Glow Blue",bg:"#3868c8"},
-  TL6032:{type:"GLOW",name:"Glow Green",bg:"#48b868"},
-  TL6033:{type:"GLOW",name:"Glow Yellow",bg:"#e8e050"},
-  TL6034:{type:"GLOW",name:"Glow Red",bg:"#c83838"},
-  TL6035:{type:"GLOW",name:"White-Grn",bg:"#e8f0e8"},
-  TL6036:{type:"GLOW",name:"White-Blu",bg:"#e8eef8"},
-  // CARBON FIBER
-  TL6030:{type:"CARBON FIBER",name:"Black",bg:"#0a0a0a"},
+  TL6000:{brand:"SUNLU",type:"HIGH SPEED ABS",name:"Black",bg:"#1a1a1a"},
+  TL6001:{brand:"SUNLU",type:"HIGH SPEED ABS",name:"White",bg:"#f0f0f0"},
+  TL6002:{brand:"SUNLU",type:"HIGH SPEED ABS",name:"Grey",bg:"#808080"},
+  TL6003:{brand:"SUNLU",type:"HIGH SPEED ABS",name:"Yellow",bg:"#f0d020"},
+  TL6004:{brand:"SUNLU",type:"HIGH SPEED ABS",name:"Red",bg:"#c02020"},
+  TL6005:{brand:"SUNLU",type:"HIGH SPEED ABS",name:"Klein Blue",bg:"#1830a0"},
+  TL6006:{brand:"SUNLU",type:"HIGH SPEED ABS",name:"Roasted Chestnut",bg:"#5a3420"},
+  TL6007:{brand:"SUNLU",type:"HIGH SPEED ABS",name:"Olive Green",bg:"#6a7830"},
+  TL6008:{brand:"SUNLU",type:"ABS FR",name:"Black",bg:"#1a1a1a"},
+  TL6010:{brand:"SUNLU",type:"PC-ABS",name:"Black",bg:"#1a1a1a"},
+  TL6011:{brand:"SUNLU",type:"PC-ABS",name:"White",bg:"#f0f0f0"},
+  TL6020:{brand:"SUNLU",type:"PA12-CF",name:"Black",bg:"#1a1a1a"},
+  TL6022:{brand:"SUNLU",type:"HIGH SPEED ABS",name:"Midnight Black",bg:"#141420"},
+  TL6023:{brand:"SUNLU",type:"HIGH SPEED ABS",name:"Beige",bg:"#e0d0a8"},
+  TL6030:{brand:"SUNLU",type:"PLA-CF",name:"Black",bg:"#0a0a0a"},
+  TL6031:{brand:"SUNLU",type:"GLOW",name:"Blue",bg:"#3868c8"},
+  TL6032:{brand:"SUNLU",type:"GLOW",name:"Green",bg:"#48b868"},
+  TL6033:{brand:"SUNLU",type:"GLOW",name:"Yellow",bg:"#e8e050"},
+  TL6034:{brand:"SUNLU",type:"GLOW",name:"Red",bg:"#c83838"},
+  TL6035:{brand:"SUNLU",type:"GLOW",name:"White to Green",bg:"#e8f0e8"},
+  TL6036:{brand:"SUNLU",type:"GLOW",name:"White to Blue",bg:"#e8eef8"},
+  TL6037:{brand:"SUNLU",type:"PLA SILK",name:"Blue",bg:"#2060c0"},
+  TL6038:{brand:"SUNLU",type:"PLA SILK",name:"Purple",bg:"#7030a0"},
+  TL6039:{brand:"SUNLU",type:"PLA SILK",name:"Red Copper",bg:"#a05a30"},
+  TL6040:{brand:"SUNLU",type:"PLA SILK",name:"Silver",bg:"#c0c4c8"},
+  TL6041:{brand:"SUNLU",type:"PLA SILK",name:"White",bg:"#f0f0f0"},
+  TL6042:{brand:"SUNLU",type:"PLA SILK",name:"Dual Blue Green",bg:"#208840"},
+  TL6044:{brand:"SUNLU",type:"PLA SILK",name:"Rainbow 02",bg:"#2060c0"},
+  TL6100:{brand:"SUNLU",type:"ASA",name:"Natural",bg:"#efe6d2"},
+  TL6101:{brand:"SUNLU",type:"ASA",name:"Black",bg:"#1a1a1a"},
+  TL6102:{brand:"SUNLU",type:"ASA",name:"Green",bg:"#208840"},
+  TL6103:{brand:"SUNLU",type:"ASA",name:"Grey",bg:"#808080"},
+  TL6104:{brand:"SUNLU",type:"ASA",name:"Blue",bg:"#2060c0"},
+  TL6105:{brand:"SUNLU",type:"ASA",name:"Red",bg:"#c02020"},
+  TL6107:{brand:"SUNLU",type:"PA",name:"Black",bg:"#1a1a1a"},
+  TL6111:{brand:"SUNLU",type:"PA6-CF",name:"Black",bg:"#1a1a1a"},
+  TL6128:{brand:"SUNLU",type:"PETG-CF",name:"Black",bg:"#1a1a1a"},
+  TL6135:{brand:"SUNLU",type:"PVB",name:"Black",bg:"#1a1a1a"},
+  TL6136:{brand:"SUNLU",type:"PVB",name:"White",bg:"#f0f0f0"},
+  TL6137:{brand:"SUNLU",type:"PVB",name:"Colour",bg:"#9aa0a6"},
+  TL6138:{brand:"SUNLU",type:"PVB",name:"Red",bg:"#c02020"},
+  TL6139:{brand:"SUNLU",type:"PVB",name:"Blue",bg:"#2060c0"},
+  TL6140:{brand:"SUNLU",type:"PVB",name:"Green",bg:"#208840"},
+  TL6141:{brand:"SUNLU",type:"PVB",name:"Black",bg:"#1a1a1a"},
+  TL6154:{brand:"SUNLU",type:"WOOD",name:"Wood",bg:"#a07840"},
+  TL6155:{brand:"SUNLU",type:"WOOD",name:"Maple wood",bg:"#c8a060"},
+  TL6156:{brand:"SUNLU",type:"WOOD",name:"Walnut wood",bg:"#5a3820"},
+  TL6157:{brand:"SUNLU",type:"WOOD",name:"Cherry wood",bg:"#7a3020"},
+  TL6200:{brand:"SUNLU",type:"HIGH SPEED PLA",name:"Oreo",bg:"#3a3a3a"},
+  TL6201:{brand:"SUNLU",type:"HIGH SPEED PLA",name:"Ashen Concrete",bg:"#8a8880"},
+  TL6202:{brand:"SUNLU",type:"HIGH SPEED PLA",name:"Shadow Storm",bg:"#282830"},
+  TL6203:{brand:"SUNLU",type:"HIGH SPEED PLA",name:"Chestnut Brown",bg:"#6a4830"},
+  TL6204:{brand:"SUNLU",type:"HIGH SPEED PLA",name:"Forest Green",bg:"#205828"},
+  TL6205:{brand:"SUNLU",type:"HIGH SPEED PLA",name:"Brick Red",bg:"#902828"},
+  TL6216:{brand:"SUNLU",type:"PLA + 2.0",name:"White",bg:"#f0f0f0"},
+  TL6217:{brand:"SUNLU",type:"PLA + 2.0",name:"Coffee Brown",bg:"#5a3420"},
+  TL6218:{brand:"SUNLU",type:"PLA + 2.0",name:"Red",bg:"#c02020"},
+  TL6219:{brand:"SUNLU",type:"PLA + 2.0",name:"Yellow",bg:"#f0d020"},
+  TL6220:{brand:"SUNLU",type:"PLA + 2.0",name:"Vivid Yellow",bg:"#f8e030"},
+  TL6221:{brand:"SUNLU",type:"PLA + 2.0",name:"Green",bg:"#308830"},
+  TL6222:{brand:"SUNLU",type:"PLA + 2.0",name:"Cyan",bg:"#30b8c0"},
+  TL6223:{brand:"SUNLU",type:"PLA + 2.0",name:"Klein Blue",bg:"#1830a0"},
+  TL6224:{brand:"SUNLU",type:"PLA + 2.0",name:"Lavender Purple",bg:"#a888c8"},
+  TL6225:{brand:"SUNLU",type:"PLA + 2.0",name:"Magenta",bg:"#c02090"},
+  TL6226:{brand:"SUNLU",type:"PLA + 2.0",name:"Black",bg:"#1a1a1a"},
+  TL6227:{brand:"SUNLU",type:"PLA + 2.0",name:"Beige",bg:"#e0d0a8"},
+  TL6228:{brand:"SUNLU",type:"PLA + 2.0",name:"Grey",bg:"#808080"},
+  TL6229:{brand:"SUNLU",type:"PLA + 2.0",name:"Oak",bg:"#b08850"},
+  TL6230:{brand:"SUNLU",type:"PLA + 2.0",name:"Olive Green",bg:"#6a7830"},
+  TL6231:{brand:"SUNLU",type:"PLA + 2.0",name:"Sunny Orange",bg:"#e87720"},
+  TL6232:{brand:"SUNLU",type:"PLA + 2.0",name:"Ceramic",bg:"#e8e0d0"},
+  TL6233:{brand:"SUNLU",type:"PLA + 2.0",name:"Bone White",bg:"#e8dcc8"},
+  TL6234:{brand:"SUNLU",type:"PLA + 2.0",name:"Midnight",bg:"#181828"},
+  TL6235:{brand:"SUNLU",type:"PLA + 2.0",name:"Roasted Chestnut",bg:"#5a3420"},
+  TL6236:{brand:"SUNLU",type:"PLA SILK",name:"Light Gold",bg:"#e0c878"},
+  TL6237:{brand:"SUNLU",type:"PLA SILK",name:"Red",bg:"#c02020"},
+  TL6238:{brand:"SUNLU",type:"PLA SILK",name:"Black",bg:"#1a1a1a"},
+  TL6239:{brand:"SUNLU",type:"PLA SILK",name:"Orange",bg:"#e87720"},
+  TL6240:{brand:"SUNLU",type:"PLA SILK",name:"Green",bg:"#208840"},
+  TL6241:{brand:"SUNLU",type:"PLA SILK",name:"Yellow",bg:"#f0d020"},
+  TL6242:{brand:"SUNLU",type:"PLA SILK",name:"Pink",bg:"#f0a0b8"},
+  TL6243:{brand:"SUNLU",type:"PLA SILK",name:"Grey",bg:"#808080"},
+  TL6244:{brand:"SUNLU",type:"PLA SILK",name:"Brass",bg:"#b8944a"},
+  TL6245:{brand:"SUNLU",type:"PLA SILK",name:"Candy Dandy",bg:"#d05888"},
+  TL6246:{brand:"SUNLU",type:"PLA SILK",name:"Dual Black Blue",bg:"#182848"},
+  TL6247:{brand:"SUNLU",type:"PLA SILK",name:"Dual Black Green",bg:"#182818"},
+  TL6248:{brand:"SUNLU",type:"PLA SILK",name:"Dual Black Purple",bg:"#281838"},
+  TL6249:{brand:"SUNLU",type:"PLA SILK",name:"Dual Black Gold",bg:"#302818"},
+  TL6250:{brand:"SUNLU",type:"PLA SILK",name:"Dual Pink Gold",bg:"#c08890"},
+  TL6251:{brand:"SUNLU",type:"PLA SILK",name:"Dual Red Blue",bg:"#601830"},
+  TL6252:{brand:"SUNLU",type:"PLA SILK",name:"Dual Green Purple",bg:"#204028"},
+  TL6253:{brand:"SUNLU",type:"PLA SILK",name:"Dual Black White",bg:"#282828"},
+  TL6254:{brand:"SUNLU",type:"PLA SILK",name:"Rainbow 01",bg:"#7030a0"},
+  TL6255:{brand:"SUNLU",type:"PLA SILK",name:"Rainbow 03",bg:"#208840"},
+  TL6256:{brand:"SUNLU",type:"PLA SILK",name:"Rainbow 04",bg:"#e8c840"},
+  TL6257:{brand:"SUNLU",type:"PLA SILK",name:"Rainbow 05",bg:"#e87720"},
+  TL6258:{brand:"SUNLU",type:"PLA SILK",name:"Rainbow 06",bg:"#c02020"},
+  TL6259:{brand:"SUNLU",type:"PLA SILK",name:"Tri Blue Green Purple",bg:"#203858"},
+  TL6261:{brand:"SUNLU",type:"PLA SILK",name:"Tri Orange Blue Green",bg:"#a05818"},
+  TL6262:{brand:"SUNLU",type:"PLA SILK",name:"Tri Red Yellow Blue",bg:"#902828"},
+  TL6263:{brand:"SUNLU",type:"PLA SILK",name:"Tri Black Gold Purple",bg:"#302038"},
+  TL6400:{brand:"ELEGOO",type:"PLA",name:"Black",bg:"#1a1a1a"},
+  TL6401:{brand:"ELEGOO",type:"PLA",name:"White",bg:"#f0f0f0"},
+  TL6402:{brand:"ELEGOO",type:"PLA",name:"Grey",bg:"#808080"},
+  TL6403:{brand:"ELEGOO",type:"PLA",name:"Red",bg:"#c02020"},
+  TL6404:{brand:"ELEGOO",type:"PLA",name:"Yellow",bg:"#f0d020"},
+  TL6405:{brand:"ELEGOO",type:"PLA",name:"Orange",bg:"#e87720"},
+  TL6406:{brand:"ELEGOO",type:"PLA",name:"Dark Blue",bg:"#1830a0"},
+  TL6407:{brand:"ELEGOO",type:"PLA",name:"Light Green",bg:"#8bc34a"},
+  TL6408:{brand:"ELEGOO",type:"PLA",name:"Pink",bg:"#f0a0b8"},
+  TL6409:{brand:"ELEGOO",type:"PLA",name:"Purple",bg:"#7030a0"},
+  TL6410:{brand:"ELEGOO",type:"PLA",name:"Sky Blue",bg:"#5aa0e0"},
+  TL6411:{brand:"ELEGOO",type:"PLA",name:"Sea Green",bg:"#2a9d8f"},
+  TL6412:{brand:"ELEGOO",type:"PLA",name:"Space Grey",bg:"#3b4048"},
+  TL6413:{brand:"ELEGOO",type:"WOOD",name:"Wood",bg:"#a07840"},
+  TL6414:{brand:"ELEGOO",type:"PLA",name:"Colour",bg:"#9aa0a6"},
+  TL6415:{brand:"ELEGOO",type:"PLA",name:"Brown",bg:"#6a4830"},
+  TL6416:{brand:"ELEGOO",type:"PLA",name:"Beige",bg:"#e0d0a8"},
+  TL6417:{brand:"ELEGOO",type:"PLA",name:"Translucent",bg:"#dbe2e6"},
+  TL6418:{brand:"ELEGOO",type:"PLA SILK",name:"Blue Purple",bg:"#7030a0"},
+  TL6419:{brand:"ELEGOO",type:"PLA SILK",name:"Coral Pink",bg:"#f5786a"},
+  TL6420:{brand:"ELEGOO",type:"PLA SILK",name:"Mint Green",bg:"#9be3c0"},
+  TL6421:{brand:"ELEGOO",type:"PLA SILK",name:"Copper",bg:"#a05a30"},
+  TL6422:{brand:"ELEGOO",type:"PLA SILK",name:"Black Red",bg:"#c02020"},
+  TL6423:{brand:"ELEGOO",type:"PLA SILK",name:"Blue Purple Black",bg:"#7030a0"},
+  TL6424:{brand:"ELEGOO",type:"PLA SILK",name:"Blue Green Orange",bg:"#e87720"},
+  TL6425:{brand:"ELEGOO",type:"PLA SILK",name:"Red",bg:"#c02020"},
+  TL6426:{brand:"ELEGOO",type:"PLA SILK",name:"Holly Green",bg:"#1f6b3a"},
+  TL6427:{brand:"ELEGOO",type:"PLA SILK",name:"Black Purple",bg:"#7030a0"},
+  TL6428:{brand:"ELEGOO",type:"PLA SILK",name:"Blue Green",bg:"#208840"},
+  TL6429:{brand:"ELEGOO",type:"PLA SILK",name:"White",bg:"#f0f0f0"},
+  TL6430:{brand:"ELEGOO",type:"PLA SILK",name:"Red Copper",bg:"#a05a30"},
+  TL6431:{brand:"ELEGOO",type:"GALAXY PLA",name:"Galaxy Peacock Blue",bg:"#1a6f8a"},
+  TL6432:{brand:"ELEGOO",type:"GALAXY PLA",name:"Galaxy Black",bg:"#14141c"},
+  TL6433:{brand:"ELEGOO",type:"GALAXY PLA",name:"Galaxy Purple",bg:"#7030a0"},
+  TL6434:{brand:"ELEGOO",type:"PLA-CF",name:"Carbon Fiber Black",bg:"#1a1a1a"},
+  TL6435:{brand:"ELEGOO",type:"RAPID PLA+",name:"Black",bg:"#1a1a1a"},
+  TL6436:{brand:"ELEGOO",type:"RAPID PLA+",name:"White",bg:"#f0f0f0"},
+  TL6437:{brand:"ELEGOO",type:"RAPID PLA+",name:"Grey",bg:"#808080"},
+  TL6438:{brand:"ELEGOO",type:"RAPID PLA+",name:"Blue",bg:"#2060c0"},
+  TL6439:{brand:"ELEGOO",type:"RAPID PLA+",name:"Green",bg:"#208840"},
+  TL6440:{brand:"ELEGOO",type:"RAPID PLA+",name:"Red",bg:"#c02020"},
+  TL6441:{brand:"ELEGOO",type:"RAPID PLA+",name:"Silver",bg:"#c0c4c8"},
+  TL6442:{brand:"ELEGOO",type:"RAPID PLA+",name:"Orange",bg:"#e87720"},
+  TL6443:{brand:"ELEGOO",type:"RAPID PLA+",name:"Yellow",bg:"#f0d020"},
+  TL6444:{brand:"ELEGOO",type:"RAPID PLA+",name:"Brown",bg:"#6a4830"},
+  TL6445:{brand:"ELEGOO",type:"RAPID PLA+",name:"Beige",bg:"#e0d0a8"},
+  TL6446:{brand:"SLIC3D",type:"PETG",name:"Black",bg:"#1a1a1a"},
+  TL6447:{brand:"SLIC3D",type:"PETG",name:"White",bg:"#f0f0f0"},
+  TL6448:{brand:"SLIC3D",type:"PETG",name:"Red",bg:"#c02020"},
+  TL6449:{brand:"SLIC3D",type:"PETG",name:"Blue",bg:"#2060c0"},
+  TL6450:{brand:"SLIC3D",type:"PETG",name:"Green",bg:"#208840"},
+  TL6451:{brand:"SLIC3D",type:"PETG",name:"Yellow",bg:"#f0d020"},
+  TL6452:{brand:"SLIC3D",type:"PETG",name:"Grey",bg:"#808080"},
+  TL6453:{brand:"SLIC3D",type:"PETG",name:"Orange",bg:"#e87720"},
+  TL6454:{brand:"SLIC3D",type:"PETG",name:"Brown",bg:"#6a4830"},
+  TL6455:{brand:"SLIC3D",type:"PETG",name:"Colour",bg:"#9aa0a6"},
+  TL6456:{brand:"SLIC3D",type:"PETG",name:"Space Grey",bg:"#3b4048"},
+  TL6457:{brand:"ELEGOO",type:"PLA+",name:"Black",bg:"#1a1a1a"},
+  TL6458:{brand:"ELEGOO",type:"PLA+",name:"White",bg:"#f0f0f0"},
+  TL6459:{brand:"ELEGOO",type:"PLA+",name:"Grey",bg:"#808080"},
+  TL6460:{brand:"ELEGOO",type:"PLA+",name:"Red",bg:"#c02020"},
+  TL6461:{brand:"ELEGOO",type:"PLA+",name:"Yellow",bg:"#f0d020"},
+  TL6462:{brand:"ELEGOO",type:"PLA+",name:"Light Green",bg:"#8bc34a"},
+  TL6463:{brand:"ELEGOO",type:"PLA+",name:"Dark Blue",bg:"#1830a0"},
+  TL6464:{brand:"ELEGOO",type:"PLA+",name:"Orange",bg:"#e87720"},
+  TL6465:{brand:"ELEGOO",type:"PLA+",name:"Sky Blue",bg:"#5aa0e0"},
+  TL6466:{brand:"ELEGOO",type:"PLA+",name:"Sea Green",bg:"#2a9d8f"},
+  TL6467:{brand:"ELEGOO",type:"PLA+",name:"Space Grey",bg:"#3b4048"},
+  TL6468:{brand:"ELEGOO",type:"PLA+",name:"Pink",bg:"#f0a0b8"},
+  TL6469:{brand:"ELEGOO",type:"PLA+",name:"Purple",bg:"#7030a0"},
+  TL6470:{brand:"ELEGOO",type:"PLA+",name:"Beige",bg:"#e0d0a8"},
+  TL6471:{brand:"ELEGOO",type:"PLA+",name:"Wood",bg:"#a07840"},
+  TL6472:{brand:"ELEGOO",type:"PLA+",name:"Brown",bg:"#6a4830"},
+  TL6473:{brand:"SLIC3D",type:"PLA",name:"Black",bg:"#1a1a1a"},
+  TL6474:{brand:"SLIC3D",type:"PLA",name:"White",bg:"#f0f0f0"},
+  TL6475:{brand:"SLIC3D",type:"PLA",name:"Grey",bg:"#808080"},
+  TL6476:{brand:"SLIC3D",type:"PLA",name:"Red",bg:"#c02020"},
+  TL6477:{brand:"SLIC3D",type:"PLA",name:"Cocoa Brown",bg:"#5a3420"},
+  TL6478:{brand:"SLIC3D",type:"PLA",name:"Yellow",bg:"#f0d020"},
+  TL6479:{brand:"SLIC3D",type:"PLA",name:"Beige",bg:"#e0d0a8"},
+  TL6480:{brand:"SLIC3D",type:"PLA",name:"Green",bg:"#208840"},
+  TL6481:{brand:"SLIC3D",type:"PLA",name:"Apple Green",bg:"#78b83a"},
+  TL6482:{brand:"SLIC3D",type:"PLA",name:"Pink",bg:"#f0a0b8"},
+  TL6483:{brand:"ELEGOO",type:"PLA MATTE",name:"Matte Black",bg:"#171717"},
+  TL6484:{brand:"ELEGOO",type:"PLA MATTE",name:"Matte White",bg:"#eeeeee"},
+  TL6485:{brand:"ELEGOO",type:"PLA MATTE",name:"Ruby Red",bg:"#9b111e"},
+  TL6486:{brand:"ELEGOO",type:"PLA MATTE",name:"Navy Blue",bg:"#1b2a52"},
+  TL6487:{brand:"ELEGOO",type:"PLA MATTE",name:"Teal Green",bg:"#177e7e"},
+  TL6488:{brand:"ELEGOO",type:"PLA MATTE",name:"Sunshine Yellow",bg:"#f7d534"},
+  TL6489:{brand:"ELEGOO",type:"PLA MATTE",name:"Slate Grey",bg:"#808080"},
+  TL6490:{brand:"ELEGOO",type:"PLA MATTE",name:"Lavender Purple",bg:"#a888c8"},
+  TL6491:{brand:"ELEGOO",type:"PLA MATTE",name:"Sakura Pink",bg:"#f4b6c6"},
+  TL6492:{brand:"ELEGOO",type:"PLA MATTE",name:"Ice Blue",bg:"#bfe0ea"},
+  TL6493:{brand:"ELEGOO",type:"PLA MATTE",name:"Beige",bg:"#e0d0a8"},
+  TL6494:{brand:"ELEGOO",type:"PLA MATTE",name:"Mint Green",bg:"#9be3c0"},
+  TL6495:{brand:"ELEGOO",type:"PETG PRO",name:"Black",bg:"#1a1a1a"},
+  TL6496:{brand:"ELEGOO",type:"PETG PRO",name:"White",bg:"#f0f0f0"},
+  TL6497:{brand:"ELEGOO",type:"PETG PRO",name:"Burgundy Red",bg:"#7a1f2b"},
+  TL6498:{brand:"ELEGOO",type:"PETG PRO",name:"Blue",bg:"#2060c0"},
+  TL6499:{brand:"ELEGOO",type:"PETG PRO",name:"Light Blue",bg:"#7db6e8"},
+  TL6500:{brand:"ELEGOO",type:"PETG PRO",name:"Green",bg:"#208840"},
+  TL6502:{brand:"ELEGOO",type:"PETG PRO",name:"Grey",bg:"#808080"},
+  TL6503:{brand:"ELEGOO",type:"PETG PRO",name:"Purple",bg:"#7030a0"},
+  TL6504:{brand:"ELEGOO",type:"PETG PRO",name:"Silver",bg:"#c0c4c8"},
+  TL6505:{brand:"ELEGOO",type:"PETG PRO",name:"Pink",bg:"#f0a0b8"},
+  TL6506:{brand:"ELEGOO",type:"PETG PRO",name:"Red",bg:"#c02020"},
+  TL6507:{brand:"ELEGOO",type:"PETG PRO",name:"Olive Green",bg:"#6a7830"},
+  TL6509:{brand:"ELEGOO",type:"RAPID PETG",name:"Black",bg:"#1a1a1a"},
+  TL6510:{brand:"ELEGOO",type:"RAPID PETG",name:"White",bg:"#f0f0f0"},
+  TL6511:{brand:"ELEGOO",type:"RAPID PETG",name:"Red",bg:"#c02020"},
+  TL6512:{brand:"ELEGOO",type:"RAPID PETG",name:"Blue",bg:"#2060c0"},
+  TL6513:{brand:"ELEGOO",type:"RAPID PETG",name:"Green",bg:"#208840"},
+  TL6514:{brand:"ELEGOO",type:"RAPID PETG",name:"Yellow",bg:"#f0d020"},
+  TL6515:{brand:"ELEGOO",type:"RAPID PETG",name:"Grey",bg:"#808080"},
+  TL6516:{brand:"ELEGOO",type:"RAPID PETG",name:"Orange",bg:"#e87720"},
+  TL6517:{brand:"ELEGOO",type:"RAPID PETG",name:"Silver",bg:"#c0c4c8"},
+  TL6518:{brand:"ELEGOO",type:"RAPID PETG",name:"Brown",bg:"#6a4830"},
+  TL6519:{brand:"ELEGOO",type:"RAPID PETG",name:"Colour",bg:"#9aa0a6"},
+  TL6520:{brand:"ELEGOO",type:"RAPID PETG",name:"Beige",bg:"#e0d0a8"},
+  TL6521:{brand:"ELEGOO",type:"RAPID PETG",name:"Space Grey",bg:"#3b4048"},
+  TL6522:{brand:"ELEGOO",type:"ASA",name:"black",bg:"#1a1a1a"},
+  TL6523:{brand:"ELEGOO",type:"ASA",name:"white",bg:"#f0f0f0"},
+  TL6524:{brand:"ELEGOO",type:"TPU",name:"Black",bg:"#1a1a1a"},
+  TL6525:{brand:"ELEGOO",type:"TPU",name:"White",bg:"#f0f0f0"},
+  TL6526:{brand:"ELEGOO",type:"TPU",name:"Clear",bg:"#dfe6ea"},
+  TL6527:{brand:"ELEGOO",type:"TPU",name:"Red",bg:"#c02020"},
+  TL6528:{brand:"ELEGOO",type:"TPU",name:"Blue",bg:"#2060c0"},
+  TL6529:{brand:"ELEGOO",type:"TPU",name:"Green",bg:"#208840"},
+  TL6530:{brand:"ELEGOO",type:"TPU",name:"Grey",bg:"#808080"},
 };
 
 // The original SUNLU arrangement (list of rows -> array of codes, null = empty)
@@ -464,6 +618,12 @@ function load(){
   if(data && data.state && data.catalogue){
     catalogue = data.catalogue;
     state = data.state;
+    // merge in any new seed filaments added since this browser last saved,
+    // and backfill the brand field on existing entries (added in v1.2)
+    for(const [code, fil] of Object.entries(SEED_CATALOGUE)){
+      if(!catalogue[code]) catalogue[code] = JSON.parse(JSON.stringify(fil));
+      else if(!catalogue[code].brand && fil.brand) catalogue[code].brand = fil.brand;
+    }
   } else {
     catalogue = JSON.parse(JSON.stringify(SEED_CATALOGUE));
     state = layoutToState(SAMPLE_LAYOUT);
@@ -492,10 +652,11 @@ function render(){
       const fil = code ? catalogue[code] : null;
       if(fil){
         const cls = textClass(fil);
+        const catLine = fil.brand ? `${esc(fil.brand)} · ${esc(code)}` : esc(code);
         blocksHTML += `<div class="block ${cls}" style="background:${fil.bg};" data-r="${ri}" data-s="${si}" draggable="true">
           <div class="type-tag">${esc(fil.type||'_____')}</div>
           <div class="color-name">${esc(fil.name)}</div>
-          <div class="cat">${esc(code)}</div>
+          <div class="cat">${catLine}</div>
         </div>`;
       } else {
         const badge = code ? `<div class="cat" style="color:#c0392b">${esc(code)}?</div>` : `<div class="cat">—</div>`;
@@ -699,19 +860,22 @@ function closeCatalogue(){ document.getElementById('cat-overlay').classList.remo
 function renderTypeList(){
   const types = [...new Set(Object.values(catalogue).map(f=>f.type).filter(Boolean))].sort();
   document.getElementById('typelist').innerHTML = types.map(t=>`<option value="${esc(t)}">`).join('');
+  const brands = [...new Set(Object.values(catalogue).map(f=>f.brand).filter(Boolean))].sort();
+  document.getElementById('brandlist').innerHTML = brands.map(b=>`<option value="${esc(b)}">`).join('');
 }
 
 let editingFilamentCode = null;
 function renderCatTable(){
   const q = (document.getElementById('cat-filter').value||'').trim().toLowerCase();
   const rows = Object.entries(catalogue).filter(([code,f]) =>
-    !q || code.toLowerCase().includes(q) || (f.name||'').toLowerCase().includes(q) || (f.type||'').toLowerCase().includes(q)
-  ).sort((a,b)=> (a[1].type||'').localeCompare(b[1].type||'') || a[0].localeCompare(b[0]));
+    !q || code.toLowerCase().includes(q) || (f.name||'').toLowerCase().includes(q) || (f.type||'').toLowerCase().includes(q) || (f.brand||'').toLowerCase().includes(q)
+  ).sort((a,b)=> (a[1].brand||'').localeCompare(b[1].brand||'') || (a[1].type||'').localeCompare(b[1].type||'') || a[0].localeCompare(b[0]));
   const t = document.getElementById('cat-table');
-  t.innerHTML = `<thead><tr><th></th><th>Code</th><th>Type</th><th>Name</th><th></th></tr></thead><tbody>` +
+  t.innerHTML = `<thead><tr><th></th><th>Code</th><th>Brand</th><th>Type</th><th>Name</th><th></th></tr></thead><tbody>` +
     rows.map(([code,f])=>`<tr>
       <td><div class="sw" style="background:${f.bg}"></div></td>
       <td style="font-weight:700">${esc(code)}</td>
+      <td>${esc(f.brand||'')}</td>
       <td>${esc(f.type||'')}</td>
       <td>${esc(f.name)}</td>
       <td style="white-space:nowrap; text-align:right">
@@ -724,6 +888,7 @@ function renderCatTable(){
 
 function saveFilament(){
   const code = normCode(document.getElementById('add-code').value);
+  const brand = document.getElementById('add-brand').value.trim();
   const type = document.getElementById('add-type').value.trim();
   const name = document.getElementById('add-name').value.trim();
   const bg = document.getElementById('add-bg').value;
@@ -731,9 +896,10 @@ function saveFilament(){
   if(!code){ toast('Enter a code (e.g. TL6039)'); return; }
   if(!name){ toast('Enter a colour name'); return; }
   if(editingFilamentCode && editingFilamentCode !== code){ delete catalogue[editingFilamentCode]; }
-  catalogue[code] = { type, name, bg, ...(text!=='auto' ? {text} : {}) };
+  catalogue[code] = { ...(brand ? {brand} : {}), type, name, bg, ...(text!=='auto' ? {text} : {}) };
   // reset form
   document.getElementById('add-code').value='';
+  document.getElementById('add-brand').value='';
   document.getElementById('add-name').value='';
   document.getElementById('add-text').value='auto';
   editingFilamentCode = null;
@@ -744,6 +910,7 @@ function saveFilament(){
 function editFilament(code){
   const f = catalogue[code];
   document.getElementById('add-code').value = code;
+  document.getElementById('add-brand').value = f.brand||'';
   document.getElementById('add-type').value = f.type||'';
   document.getElementById('add-name').value = f.name||'';
   document.getElementById('add-bg').value = /^#[0-9a-f]{6}$/i.test(f.bg)?f.bg:'#cccccc';
@@ -802,8 +969,17 @@ function clearLayout(){
 // ============================================================
 function codeNum(code){ const m=/(\d+)\s*$/.exec(code||''); return m ? parseInt(m[1],10) : Number.MAX_SAFE_INTEGER; }
 
+function groupKey(code, mode){
+  const f = catalogue[code] || {};
+  const brand = f.brand || '', type = f.type || 'Uncategorised';
+  if(mode === 'brand') return brand || 'Unbranded';
+  if(mode === 'type')  return type;
+  return (brand ? brand + ' ' : '') + type;   // brandtype
+}
+
 function autoOrganise(){
   const source = document.getElementById('org-source').value;
+  const groupMode = document.getElementById('org-groupby').value;
   const newRow = document.getElementById('org-newrow').checked;
   let max = parseInt(document.getElementById('org-max').value,10); if(!(max>0)) max = 12;
 
@@ -817,14 +993,14 @@ function autoOrganise(){
   }
   if(codes.length === 0){ toast(source==='catalogue' ? 'Catalogue is empty' : 'No filaments on the shelf yet'); return; }
 
-  // 2) group by type, sort each group by CAT number
+  // 2) group, sort each group by CAT number
   const groups = {};
-  codes.forEach(c => { const t = catalogue[c].type || 'Uncategorised'; (groups[t] = groups[t] || []).push(c); });
+  codes.forEach(c => { const t = groupKey(c, groupMode); (groups[t] = groups[t] || []).push(c); });
   Object.values(groups).forEach(list => list.sort((a,b) => codeNum(a)-codeNum(b) || a.localeCompare(b)));
   // order the groups by their lowest CAT number
   const groupNames = Object.keys(groups).sort((a,b) => codeNum(groups[a][0]) - codeNum(groups[b][0]) || a.localeCompare(b));
 
-  if(!confirm('Rearrange the shelf: group by type and sort each group by CAT number?\nThis replaces the current layout (the catalogue is not changed).')) return;
+  if(!confirm('Rearrange the shelf: group the filaments and sort each group by CAT number?\nThis replaces the current layout (the catalogue is not changed).')) return;
 
   if(newRow){
     // one type per row (wrapping to extra rows when a group is larger than max)
