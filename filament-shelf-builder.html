@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Filament Shelf Builder</title>
+<style>
+  @page { size: A4 portrait; margin: 12mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --navy: #0c254c;
+    --ink: #1a1a1a;
+    --line: #333;
+    --ui-bg: #eef1f5;
+    --panel: #ffffff;
+    --accent: #1d5fd8;
+    --accent-dk: #12408f;
+    --danger: #c0392b;
+    --muted: #6b7280;
+    --border: #d3d9e0;
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+    color: var(--ink);
+    background: var(--ui-bg);
+  }
+
+  /* ===================== APP CHROME ===================== */
+  .app {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 0;
+    height: 100vh;
+  }
+  .sidebar {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .stage {
+    overflow: auto;
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .sidebar h2 {
+    font-size: 15px;
+    color: var(--navy);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sidebar .tagline { font-size: 11px; color: var(--muted); margin-bottom: 16px; line-height: 1.4; }
+  .group { border-top: 1px solid var(--border); padding: 14px 0; }
+  .group:first-of-type { border-top: none; padding-top: 0; }
+  .group > .g-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 10px;
+  }
+  label.field { display: block; margin-bottom: 10px; font-size: 12px; color: #333; }
+  label.field span { display: block; margin-bottom: 3px; font-weight: 600; color: #444; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 13px; font-family: inherit; background: #fff; color: var(--ink);
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+    background: #fff; color: #222; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    font-family: inherit; line-height: 1;
+  }
+  .btn:hover { background: #f3f6fb; border-color: #b9c4d1; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: var(--accent-dk); }
+  .btn.block { width: 100%; }
+  .btn.sm { padding: 5px 8px; font-size: 11.5px; }
+  .btn.danger { color: var(--danger); border-color: #e6b9b3; }
+  .btn.danger:hover { background: #fdecea; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-row .btn { flex: 1; }
+  .hint { font-size: 11px; color: var(--muted); line-height: 1.4; margin-top: 6px; }
+
+  /* rows editor */
+  .rowcfg { border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 8px; background: #fafbfd; }
+  .rowcfg .rc-top { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .rowcfg .rc-top .idx { font-weight: 700; font-size: 11px; color: var(--navy); min-width: 16px; }
+  .rowcfg .rc-move { display: flex; flex-direction: column; gap: 2px; }
+  .rowcfg .rc-move .btn { padding: 1px 5px; font-size: 10px; }
+  .rowcfg .rc-labels { display: flex; gap: 6px; margin-bottom: 6px; }
+  .rowcfg .rc-labels input { font-size: 12px; padding: 5px 7px; }
+  .rowcfg .rc-slots { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #444; }
+  .stepper { display: inline-flex; align-items: center; gap: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .stepper button { border: none; background: #fff; width: 26px; height: 26px; font-size: 15px; cursor: pointer; color: #333; }
+  .stepper button:hover { background: #eef2f8; }
+  .stepper .val { min-width: 30px; text-align: center; font-size: 12.5px; font-weight: 700; border-left: 1px solid var(--border); border-right: 1px solid var(--border); line-height: 26px; }
+
+  /* ===================== SHELF (print target) ===================== */
+  .sheet {
+    background: #fff; color: #1a1a1a; width: 210mm; min-height: 297mm;
+    padding: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.12); border-radius: 2px;
+  }
+  .header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 3px solid #0c254c; padding-bottom: 8px; margin-bottom: 14px; }
+  .header h1 { font-size: 18px; font-weight: 700; color: #0c254c; }
+  .header .date { font-size: 11px; color: #666; }
+  .shelf { border: 2px solid #333; border-radius: 3px; overflow: hidden; }
+  .row { display: flex; border-bottom: 2px solid #333; }
+  .row:last-child { border-bottom: none; }
+  .row-label { width: 62px; min-width: 62px; background: #0c254c; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; line-height: 1.2; text-align: center; padding: 4px 2px; border-right: 2px solid #333; }
+  .row-label .sub { font-size: 8px; font-weight: 400; opacity: 0.6; margin-top: 2px; }
+  .slots { display: flex; flex: 1; }
+  .block { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 5px 1px 4px; border-right: 1px solid rgba(0,0,0,0.2); text-align: center; min-height: 68px; position: relative; }
+  .block:last-child { border-right: none; }
+  .block .type-tag { font-size: 5.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; padding: 1px 3px; border-radius: 1px; line-height: 1; }
+  .block .color-name { font-size: 8.5px; font-weight: 700; line-height: 1.15; }
+  .block .cat { font-size: 6.5px; font-weight: 500; letter-spacing: -0.2px; opacity: 0.7; }
+  .block.dk .color-name { color: #fff; }
+  .block.dk .cat { color: rgba(255,255,255,0.7); }
+  .block.dk .type-tag { background: #fff; color: #222; }
+  .block.lt .color-name { color: #111; }
+  .block.lt .cat { color: rgba(0,0,0,0.5); }
+  .block.lt .type-tag { background: #222; color: #fff; }
+  .block.empty { background: #f5f5f5 !important; border: 1px dashed #bbb; }
+  .block.empty .color-name { color: #bbb; font-weight: 400; }
+  .block.empty .cat { color: #ccc; }
+  .block.empty .type-tag { background: #ccc; color: #fff; }
+  .footer { margin-top: 10px; display: flex; justify-content: space-between; align-items: baseline; }
+  .footer-info { font-size: 8px; color: #999; }
+  .footer-credit { font-size: 7px; color: #aaa; white-space: nowrap; margin-left: 10px; }
+
+  /* editing affordances (screen only) */
+  .editing .block { cursor: pointer; transition: box-shadow .08s, transform .08s; }
+  .editing .block:not(.empty) { cursor: grab; }
+  .editing .block:hover { box-shadow: inset 0 0 0 2px var(--accent); z-index: 2; }
+  .editing .block.dragover { box-shadow: inset 0 0 0 3px #f39c12; }
+  .editing .block.dragging { opacity: 0.4; }
+
+  /* ===================== MODAL ===================== */
+  .overlay { position: fixed; inset: 0; background: rgba(15,25,45,0.45); display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+  .overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 560px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  .modal.wide { max-width: 820px; }
+  .modal .m-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .modal .m-head h3 { font-size: 15px; color: var(--navy); }
+  .modal .m-head .x { border: none; background: none; font-size: 22px; cursor: pointer; color: #888; line-height: 1; }
+  .modal .m-body { padding: 16px 18px; overflow-y: auto; }
+  .modal .m-foot { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px; }
+
+  .search-list { border: 1px solid var(--border); border-radius: 8px; max-height: 44vh; overflow-y: auto; margin-top: 10px; }
+  .fil-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+  .fil-item:last-child { border-bottom: none; }
+  .fil-item:hover { background: #f3f6fb; }
+  .fil-item .swatch { width: 26px; height: 26px; border-radius: 5px; border: 1px solid rgba(0,0,0,0.15); flex-shrink: 0; }
+  .fil-item .fi-main { flex: 1; min-width: 0; }
+  .fil-item .fi-name { font-size: 13px; font-weight: 600; }
+  .fil-item .fi-meta { font-size: 11px; color: var(--muted); }
+  .fil-item .fi-code { font-size: 11px; font-weight: 700; color: #333; font-variant-numeric: tabular-nums; }
+  .empty-note { padding: 18px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  /* catalogue table */
+  .cat-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .cat-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); padding: 6px 8px; border-bottom: 2px solid var(--border); position: sticky; top: 0; background: #fff; }
+  .cat-table td { padding: 5px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  .cat-table .sw { width: 22px; height: 22px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.15); }
+  .addform { display: grid; grid-template-columns: 90px 120px 1fr 54px 96px auto; gap: 8px; align-items: end; padding: 12px; background: #f7f9fc; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
+  .addform label.field { margin: 0; }
+  .addform input[type=color] { width: 100%; height: 34px; padding: 2px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #10233f; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 100; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+  .filecount { font-size: 11px; color: var(--muted); }
+
+  /* ===================== PRINT ===================== */
+  @media print {
+    body { background: #fff; }
+    .app { display: block; height: auto; }
+    .sidebar, .overlay, .toast { display: none !important; }
+    .stage { padding: 0; overflow: visible; display: block; }
+    .sheet { box-shadow: none; width: auto; min-height: 0; padding: 0; border-radius: 0; }
+    .shelf { page-break-inside: avoid; }
+    .editing .block { cursor: default; }
+  }
+
+  @media (max-width: 800px) {
+    .app { grid-template-columns: 1fr; height: auto; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+    .sheet { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar no-print">
+    <h2>🧵 Filament Shelf Builder</h2>
+    <div class="tagline">Type a Jaycar TL code into any slot and it auto-fills the colour, type &amp; name. Drag filaments between slots to rearrange. Then print to A4.</div>
+
+    <div class="group">
+      <div class="g-title">Sheet</div>
+      <label class="field"><span>Title</span><input type="text" id="in-title"></label>
+      <label class="field"><span>Footer note</span><input type="text" id="in-footer"></label>
+      <label class="field"><span>Credit</span><input type="text" id="in-credit"></label>
+    </div>
+
+    <div class="group">
+      <div class="g-title">Print &amp; backup</div>
+      <button class="btn primary block" onclick="window.print()">🖨️ Print / Save as PDF (A4)</button>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn sm" onclick="exportData()">⬇ Export backup</button>
+        <button class="btn sm" onclick="document.getElementById('importfile').click()">⬆ Import backup</button>
+      </div>
+      <input type="file" id="importfile" accept="application/json" style="display:none" onchange="importData(this)">
+      <div class="hint">Everything is saved automatically in this browser. Export a backup file to keep it safe or move it to another computer.</div>
+    </div>
+
+    <div class="group">
+      <div class="g-title">Filament catalogue</div>
+      <button class="btn block" onclick="openCatalogue()">📚 Manage catalogue <span class="filecount" id="catcount"></span></button>
+      <div class="hint">Add new Jaycar filaments here as they’re released, then drop them onto the shelf by code.</div>
+    </div>
+
+    <div class="group">
+      <div class="g-title">Rows &amp; slots</div>
+      <div id="rows-editor"></div>
+      <button class="btn block" onclick="addRow()">＋ Add row</button>
+    </div>
+
+    <div class="group">
+      <div class="g-title">Reset</div>
+      <div class="btn-row">
+        <button class="btn sm" onclick="loadSample()">Load SUNLU sample</button>
+        <button class="btn sm danger" onclick="clearLayout()">Empty all slots</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================== STAGE / PRINTABLE SHEET ===================== -->
+  <main class="stage">
+    <div class="sheet editing" id="sheet"></div>
+  </main>
+</div>
+
+<!-- ===================== SLOT EDITOR MODAL ===================== -->
+<div class="overlay" id="slot-overlay">
+  <div class="modal">
+    <div class="m-head">
+      <h3 id="slot-title">Choose filament</h3>
+      <button class="x" onclick="closeSlot()">×</button>
+    </div>
+    <div class="m-body">
+      <input type="text" id="slot-search" placeholder="Type a code (TL6039) or name (Red Copper)…" autocomplete="off" oninput="renderSlotSearch()">
+      <div class="search-list" id="slot-results"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn danger" onclick="clearSlot()">Clear slot</button>
+      <button class="btn" onclick="openAddFromSlot()">＋ New filament</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CATALOGUE MODAL ===================== -->
+<div class="overlay" id="cat-overlay">
+  <div class="modal wide">
+    <div class="m-head">
+      <h3>Filament catalogue</h3>
+      <button class="x" onclick="closeCatalogue()">×</button>
+    </div>
+    <div class="m-body">
+      <div class="addform">
+        <label class="field"><span>Code</span><input type="text" id="add-code" placeholder="TL6039"></label>
+        <label class="field"><span>Type</span><input type="text" id="add-type" placeholder="PLA SILK" list="typelist"></label>
+        <label class="field"><span>Colour name</span><input type="text" id="add-name" placeholder="Red Copper"></label>
+        <label class="field"><span>Colour</span><input type="color" id="add-bg" value="#c0392b"></label>
+        <label class="field"><span>Text</span>
+          <select id="add-text"><option value="auto">Auto</option><option value="dk">Light on dark</option><option value="lt">Dark on light</option></select>
+        </label>
+        <button class="btn primary" id="add-btn" onclick="saveFilament()">Add</button>
+      </div>
+      <datalist id="typelist"></datalist>
+      <input type="text" id="cat-filter" placeholder="Filter catalogue…" oninput="renderCatTable()" style="margin-bottom:10px">
+      <div style="max-height:46vh; overflow:auto; border:1px solid var(--border); border-radius:8px;">
+        <table class="cat-table" id="cat-table"></table>
+      </div>
+    </div>
+    <div class="m-foot">
+      <span class="filecount" id="cat-total"></span>
+      <button class="btn" onclick="closeCatalogue()">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+//  SEED CATALOGUE  (from the SUNLU shelf map)
+// ============================================================
+const SEED_CATALOGUE = {
+  // PLA SILK
+  TL6039:{type:"PLA SILK",name:"Red Copper",bg:"#a05a30"},
+  TL6040:{type:"PLA SILK",name:"Silver",bg:"#c0c4c8"},
+  TL6041:{type:"PLA SILK",name:"White",bg:"#f0f0f0"},
+  TL6236:{type:"PLA SILK",name:"Light Gold",bg:"#e0c878"},
+  TL6237:{type:"PLA SILK",name:"Red",bg:"#c02020"},
+  TL6238:{type:"PLA SILK",name:"Black",bg:"#1a1a1a"},
+  TL6240:{type:"PLA SILK",name:"Green",bg:"#208840"},
+  TL6241:{type:"PLA SILK",name:"Yellow",bg:"#f0d020"},
+  TL6242:{type:"PLA SILK",name:"Pink",bg:"#f0a0b8"},
+  TL6243:{type:"PLA SILK",name:"Grey",bg:"#808080"},
+  TL6244:{type:"PLA SILK",name:"Brass",bg:"#b8944a",text:"dk"},
+  TL6246:{type:"PLA SILK",name:"Dual Blk Blue",bg:"#182848"},
+  TL6248:{type:"PLA SILK",name:"Dual Blk Purple",bg:"#281838"},
+  TL6249:{type:"PLA SILK",name:"Dual Blk Gold",bg:"#302818"},
+  TL6250:{type:"PLA SILK",name:"Dual Pink Gold",bg:"#c08890"},
+  TL6251:{type:"PLA SILK",name:"Dual Red Blue",bg:"#601830"},
+  TL6252:{type:"PLA SILK",name:"Dual Grn Purple",bg:"#204028"},
+  TL6253:{type:"PLA SILK",name:"Dual Blk White",bg:"#282828"},
+  TL6259:{type:"PLA SILK",name:"Tri Blu Grn Pur",bg:"#203858"},
+  TL6260:{type:"PLA SILK",name:"Tri Red Yel Grn",bg:"#a04818"},
+  TL6261:{type:"PLA SILK",name:"Tri Org Blu Grn",bg:"#a05818"},
+  TL6262:{type:"PLA SILK",name:"Tri Red Yel Blu",bg:"#902828"},
+  TL6263:{type:"PLA SILK",name:"Tri Blk Gld Pur",bg:"#302038"},
+  TL6245:{type:"PLA SILK",name:"Candy Dandy",bg:"#d05888"},
+  TL6239:{type:"PLA SILK",name:"Tri Blk Gld Pur",bg:"#302038"},
+  TL6247:{type:"PLA SILK",name:"Dual Blk Green",bg:"#182818"},
+  // RAINBOW
+  TL6254:{type:"RAINBOW",name:"Rainbow 01",bg:"#7030a0"},
+  TL6044:{type:"RAINBOW",name:"Rainbow 02",bg:"#2060c0"},
+  TL6255:{type:"RAINBOW",name:"Rainbow 03",bg:"#208840"},
+  TL6256:{type:"RAINBOW",name:"Rainbow 04",bg:"#e8c840"},
+  TL6257:{type:"RAINBOW",name:"Rainbow 05",bg:"#e87720"},
+  TL6258:{type:"RAINBOW",name:"Rainbow 06",bg:"#c02020"},
+  // PLA + 2.0
+  TL6216:{type:"PLA + 2.0",name:"White",bg:"#f0f0f0"},
+  TL6217:{type:"PLA + 2.0",name:"Coffee Brown",bg:"#5a3420"},
+  TL6218:{type:"PLA + 2.0",name:"Red",bg:"#c02020"},
+  TL6219:{type:"PLA + 2.0",name:"Yellow",bg:"#f0d020"},
+  TL6220:{type:"PLA + 2.0",name:"Vivid Yellow",bg:"#f8e030"},
+  TL6221:{type:"PLA + 2.0",name:"Green",bg:"#308830"},
+  TL6222:{type:"PLA + 2.0",name:"Cyan",bg:"#30b8c0"},
+  TL6223:{type:"PLA + 2.0",name:"Klein Blue",bg:"#1830a0"},
+  TL6224:{type:"PLA + 2.0",name:"Lavender Purple",bg:"#a888c8"},
+  TL6225:{type:"PLA + 2.0",name:"Magenta",bg:"#c02090"},
+  TL6226:{type:"PLA + 2.0",name:"Black",bg:"#1a1a1a"},
+  TL6227:{type:"PLA + 2.0",name:"Beige",bg:"#e0d0a8"},
+  TL6228:{type:"PLA + 2.0",name:"Grey",bg:"#808080"},
+  TL6229:{type:"PLA + 2.0",name:"Oak",bg:"#b08850"},
+  TL6230:{type:"PLA + 2.0",name:"Olive Green",bg:"#6a7830"},
+  TL6231:{type:"PLA + 2.0",name:"Sunny Orange",bg:"#e87720"},
+  TL6232:{type:"PLA + 2.0",name:"Ceramic",bg:"#e8e0d0"},
+  TL6233:{type:"PLA + 2.0",name:"Bone White",bg:"#e8dcc8"},
+  TL6234:{type:"PLA + 2.0",name:"Midnight",bg:"#181828"},
+  TL6235:{type:"PLA + 2.0",name:"Roasted Chestnut",bg:"#5a3420"},
+  // SLIC3D PLA
+  TL6473:{type:"SLIC3D PLA",name:"Black",bg:"#1a1a1a"},
+  TL6474:{type:"SLIC3D PLA",name:"White",bg:"#f0f0f0"},
+  TL6475:{type:"SLIC3D PLA",name:"Grey",bg:"#808080"},
+  TL6476:{type:"SLIC3D PLA",name:"Red",bg:"#c02020"},
+  TL6477:{type:"SLIC3D PLA",name:"Cocoa Brown",bg:"#5a3420"},
+  TL6478:{type:"SLIC3D PLA",name:"Yellow",bg:"#f0d020"},
+  TL6479:{type:"SLIC3D PLA",name:"Beige",bg:"#e0d0a8"},
+  TL6480:{type:"SLIC3D PLA",name:"Green",bg:"#208840"},
+  TL6481:{type:"SLIC3D PLA",name:"Apple Green",bg:"#78b83a"},
+  TL6482:{type:"SLIC3D PLA",name:"Pink",bg:"#f0a0b8"},
+  // HIGH SPEED PLA
+  TL6200:{type:"HIGH SPEED PLA",name:"Oreo Marble",bg:"#3a3a3a"},
+  TL6201:{type:"HIGH SPEED PLA",name:"Ashen Concrete",bg:"#8a8880"},
+  TL6202:{type:"HIGH SPEED PLA",name:"Shadow Storm",bg:"#282830"},
+  TL6203:{type:"HIGH SPEED PLA",name:"Chestnut Brown",bg:"#6a4830"},
+  TL6204:{type:"HIGH SPEED PLA",name:"Forest Green",bg:"#205828"},
+  TL6205:{type:"HIGH SPEED PLA",name:"Brick Red",bg:"#902828"},
+  // WOOD
+  TL6154:{type:"WOOD",name:"Wood",bg:"#a07840"},
+  TL6155:{type:"WOOD",name:"Maple Wood",bg:"#c8a060"},
+  TL6156:{type:"WOOD",name:"Walnut Wood",bg:"#5a3820"},
+  TL6157:{type:"WOOD",name:"Cherry Wood",bg:"#7a3020"},
+  // GLOW
+  TL6031:{type:"GLOW",name:"Glow Blue",bg:"#3868c8"},
+  TL6032:{type:"GLOW",name:"Glow Green",bg:"#48b868"},
+  TL6033:{type:"GLOW",name:"Glow Yellow",bg:"#e8e050"},
+  TL6034:{type:"GLOW",name:"Glow Red",bg:"#c83838"},
+  TL6035:{type:"GLOW",name:"White-Grn",bg:"#e8f0e8"},
+  TL6036:{type:"GLOW",name:"White-Blu",bg:"#e8eef8"},
+  // CARBON FIBER
+  TL6030:{type:"CARBON FIBER",name:"Black",bg:"#0a0a0a"},
+};
+
+// The original SUNLU arrangement (list of rows -> array of codes, null = empty)
+const SAMPLE_LAYOUT = {
+  title: "SUNLU PLA Filament — Shelf Map",
+  footer: "All spools 1.75mm · 1kg · Block colour = filament colour · Top label = category · Bottom = Jaycar CAT.NO",
+  credit: "Made by Richard Davies",
+  rows: [
+    { label:"ROW 7", sublabel:"TOP", codes:["TL6039","TL6040","TL6041","TL6236","TL6237","TL6238","TL6240","TL6241","TL6242","TL6243","TL6244","TL6246"] },
+    { label:"ROW 6", sublabel:"",    codes:["TL6248","TL6249","TL6250","TL6251","TL6252","TL6253","TL6259","TL6260","TL6261","TL6262","TL6263"] },
+    { label:"ROW 5", sublabel:"",    codes:["TL6473","TL6474","TL6475","TL6476","TL6477","TL6478","TL6479","TL6480","TL6481","TL6482","TL6476"] },
+    { label:"ROW 4", sublabel:"",    codes:["TL6245","TL6239","TL6247","TL6254","TL6044","TL6255","TL6256","TL6257","TL6258","TL6216","TL6217"] },
+    { label:"ROW 3", sublabel:"",    codes:["TL6218","TL6219","TL6220","TL6221","TL6222","TL6223","TL6224","TL6225","TL6226","TL6227","TL6228"] },
+    { label:"ROW 2", sublabel:"",    codes:["TL6229","TL6230","TL6231","TL6232","TL6233","TL6234","TL6235","TL6200","TL6201","TL6202","TL6203"] },
+    { label:"ROW 1", sublabel:"BTM", codes:["TL6204","TL6205","TL6154","TL6155","TL6156","TL6157","TL6031","TL6032","TL6033","TL6034","TL6035","TL6036","TL6030"] },
+  ]
+};
+
+// ============================================================
+//  STATE
+// ============================================================
+const LS_KEY = "filamentShelfBuilder.v1";
+let catalogue = {};   // code -> {type,name,bg,text?}
+let state = null;     // { title, footer, credit, rows:[{label,sublabel,blocks:[code|null]}] }
+let editing = { row: null, slot: null }; // active slot editor
+
+// ---------- helpers ----------
+function normCode(c){ return (c||"").trim().toUpperCase().replace(/\s+/g,""); }
+
+function luminance(hex){
+  const m = /^#?([0-9a-f]{6})$/i.exec((hex||"").trim());
+  if(!m) return 128;
+  const n = parseInt(m[1],16);
+  const r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+  return 0.299*r + 0.587*g + 0.114*b;
+}
+// returns 'lt' (dark text on light bg) or 'dk' (light text on dark bg)
+function textClass(fil){
+  if(fil.text === 'lt' || fil.text === 'dk') return fil.text;
+  return luminance(fil.bg) > 150 ? 'lt' : 'dk';
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+// ============================================================
+//  PERSISTENCE
+// ============================================================
+function save(){
+  try { localStorage.setItem(LS_KEY, JSON.stringify({catalogue, state})); } catch(e){}
+}
+function load(){
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(LS_KEY)); } catch(e){}
+  if(data && data.state && data.catalogue){
+    catalogue = data.catalogue;
+    state = data.state;
+  } else {
+    catalogue = JSON.parse(JSON.stringify(SEED_CATALOGUE));
+    state = layoutToState(SAMPLE_LAYOUT);
+  }
+}
+
+function layoutToState(layout){
+  return {
+    title: layout.title,
+    footer: layout.footer,
+    credit: layout.credit,
+    rows: layout.rows.map(r => ({ label:r.label, sublabel:r.sublabel, blocks:r.codes.slice() }))
+  };
+}
+
+// ============================================================
+//  RENDER: SHEET
+// ============================================================
+function render(){
+  const sheet = document.getElementById('sheet');
+  let rowsHTML = '';
+  state.rows.forEach((row, ri) => {
+    const sub = row.sublabel ? `<br>${esc(row.sublabel)}` : '';
+    let blocksHTML = '';
+    row.blocks.forEach((code, si) => {
+      const fil = code ? catalogue[code] : null;
+      if(fil){
+        const cls = textClass(fil);
+        blocksHTML += `<div class="block ${cls}" style="background:${fil.bg};" data-r="${ri}" data-s="${si}" draggable="true">
+          <div class="type-tag">${esc(fil.type||'_____')}</div>
+          <div class="color-name">${esc(fil.name)}</div>
+          <div class="cat">${esc(code)}</div>
+        </div>`;
+      } else {
+        const badge = code ? `<div class="cat" style="color:#c0392b">${esc(code)}?</div>` : `<div class="cat">—</div>`;
+        blocksHTML += `<div class="block empty" data-r="${ri}" data-s="${si}">
+          <div class="type-tag">${code ? 'UNKNOWN' : '_____'}</div>
+          <div class="color-name">${code ? 'Not in catalogue' : 'Empty'}</div>
+          ${badge}
+        </div>`;
+      }
+    });
+    rowsHTML += `<div class="row">
+      <div class="row-label">${esc(row.label)}${sub}<div class="sub">${row.blocks.length} slots</div></div>
+      <div class="slots">${blocksHTML}</div>
+    </div>`;
+  });
+
+  sheet.innerHTML = `
+    <div class="header">
+      <h1>${esc(state.title)}</h1>
+      <div class="date">Date: _____ / _____ / _____</div>
+    </div>
+    <div class="shelf">${rowsHTML}</div>
+    <div class="footer">
+      <div class="footer-info">${esc(state.footer)}</div>
+      <div class="footer-credit">${esc(state.credit)}</div>
+    </div>`;
+
+  // wire up interactions
+  sheet.querySelectorAll('.block').forEach(bl => {
+    bl.addEventListener('click', onBlockClick);
+    bl.addEventListener('dragstart', onDragStart);
+    bl.addEventListener('dragover', onDragOver);
+    bl.addEventListener('dragleave', onDragLeave);
+    bl.addEventListener('drop', onDrop);
+    bl.addEventListener('dragend', onDragEnd);
+  });
+  document.getElementById('catcount').textContent = '(' + Object.keys(catalogue).length + ')';
+  save();
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// ============================================================
+//  RENDER: ROWS EDITOR (sidebar)
+// ============================================================
+function renderRowsEditor(){
+  const wrap = document.getElementById('rows-editor');
+  wrap.innerHTML = '';
+  state.rows.forEach((row, ri) => {
+    const div = document.createElement('div');
+    div.className = 'rowcfg';
+    div.innerHTML = `
+      <div class="rc-top">
+        <div class="rc-move">
+          <button class="btn" ${ri===0?'disabled':''} data-act="up">▲</button>
+          <button class="btn" ${ri===state.rows.length-1?'disabled':''} data-act="down">▼</button>
+        </div>
+        <div class="idx">${ri+1}</div>
+        <div class="rc-slots" style="flex:1; justify-content:flex-end;">
+          <span>Slots</span>
+          <span class="stepper">
+            <button data-act="minus">−</button>
+            <span class="val">${row.blocks.length}</span>
+            <button data-act="plus">＋</button>
+          </span>
+          <button class="btn sm danger" data-act="del">✕</button>
+        </div>
+      </div>
+      <div class="rc-labels">
+        <input type="text" data-act="label" value="${esc(row.label)}" placeholder="Label">
+        <input type="text" data-act="sublabel" value="${esc(row.sublabel)}" placeholder="Sub" style="max-width:70px">
+      </div>`;
+    div.querySelectorAll('[data-act]').forEach(el => {
+      const act = el.getAttribute('data-act');
+      if(el.tagName === 'INPUT'){
+        el.addEventListener('input', () => { row[act] = el.value; render(); });
+      } else {
+        el.addEventListener('click', () => rowAction(ri, act));
+      }
+    });
+    wrap.appendChild(div);
+  });
+}
+
+function rowAction(ri, act){
+  const row = state.rows[ri];
+  if(act === 'up' && ri>0){ [state.rows[ri-1],state.rows[ri]]=[state.rows[ri],state.rows[ri-1]]; }
+  else if(act === 'down' && ri<state.rows.length-1){ [state.rows[ri+1],state.rows[ri]]=[state.rows[ri],state.rows[ri+1]]; }
+  else if(act === 'minus' && row.blocks.length>1){ row.blocks.pop(); }
+  else if(act === 'plus'){ row.blocks.push(null); }
+  else if(act === 'del'){ if(state.rows.length>1 && confirm('Delete '+row.label+'?')) state.rows.splice(ri,1); }
+  renderAll();
+}
+
+function addRow(){
+  const n = state.rows.length;
+  state.rows.push({ label:'ROW '+(n+1), sublabel:'', blocks:new Array(11).fill(null) });
+  renderAll();
+}
+
+function renderAll(){ render(); renderRowsEditor(); }
+
+// ============================================================
+//  SLOT EDITING
+// ============================================================
+function onBlockClick(e){
+  // ignore clicks that were part of a drag
+  if(draggingEl) return;
+  const r = +this.getAttribute('data-r'), s = +this.getAttribute('data-s');
+  openSlot(r, s);
+}
+function openSlot(r, s){
+  editing = { row:r, slot:s };
+  const cur = state.rows[r].blocks[s];
+  document.getElementById('slot-title').textContent = `${state.rows[r].label} · slot ${s+1}`;
+  const box = document.getElementById('slot-search');
+  box.value = '';
+  document.getElementById('slot-overlay').classList.add('open');
+  renderSlotSearch();
+  setTimeout(()=>box.focus(), 30);
+}
+function closeSlot(){ document.getElementById('slot-overlay').classList.remove('open'); editing={row:null,slot:null}; }
+
+function renderSlotSearch(){
+  const q = normCode(document.getElementById('slot-search').value);
+  const qraw = document.getElementById('slot-search').value.trim().toLowerCase();
+  const results = document.getElementById('slot-results');
+  const entries = Object.entries(catalogue).filter(([code, f]) => {
+    if(!qraw) return true;
+    return code.includes(q) || (f.name||'').toLowerCase().includes(qraw) || (f.type||'').toLowerCase().includes(qraw);
+  }).sort((a,b)=> a[0].localeCompare(b[0]));
+
+  if(entries.length === 0){
+    results.innerHTML = `<div class="empty-note">No match. Use “＋ New filament” to add <b>${esc(document.getElementById('slot-search').value)}</b> to the catalogue.</div>`;
+    return;
+  }
+  results.innerHTML = entries.slice(0,200).map(([code,f]) => `
+    <div class="fil-item" onclick="assignSlot('${code}')">
+      <div class="swatch" style="background:${f.bg}"></div>
+      <div class="fi-main">
+        <div class="fi-name">${esc(f.name)}</div>
+        <div class="fi-meta">${esc(f.type||'')}</div>
+      </div>
+      <div class="fi-code">${esc(code)}</div>
+    </div>`).join('');
+}
+function assignSlot(code){
+  if(editing.row==null) return;
+  state.rows[editing.row].blocks[editing.slot] = code;
+  closeSlot(); renderAll();
+}
+function clearSlot(){
+  if(editing.row==null) return;
+  state.rows[editing.row].blocks[editing.slot] = null;
+  closeSlot(); renderAll();
+}
+function openAddFromSlot(){
+  const guess = document.getElementById('slot-search').value.trim();
+  openCatalogue();
+  if(/^tl/i.test(guess)) document.getElementById('add-code').value = normCode(guess);
+  else document.getElementById('add-name').value = guess;
+  document.getElementById('add-code').focus();
+}
+
+// ============================================================
+//  DRAG & DROP (swap filaments between slots)
+// ============================================================
+let dragSrc = null, draggingEl = null;
+function onDragStart(e){
+  const r=+this.getAttribute('data-r'), s=+this.getAttribute('data-s');
+  if(!state.rows[r].blocks[s]){ e.preventDefault(); return; } // only drag filled slots
+  dragSrc = {r,s}; draggingEl = this;
+  this.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', state.rows[r].blocks[s]); } catch(_){}
+}
+function onDragOver(e){ if(dragSrc){ e.preventDefault(); this.classList.add('dragover'); } }
+function onDragLeave(e){ this.classList.remove('dragover'); }
+function onDrop(e){
+  e.preventDefault(); this.classList.remove('dragover');
+  if(!dragSrc) return;
+  const r=+this.getAttribute('data-r'), s=+this.getAttribute('data-s');
+  const a = state.rows[dragSrc.r].blocks, b = state.rows[r].blocks;
+  const tmp = b[s]; b[s] = a[dragSrc.r===r && dragSrc.s===s ? s : dragSrc.s]; a[dragSrc.s] = tmp;
+  dragSrc = null;
+  renderAll();
+}
+function onDragEnd(e){ this.classList.remove('dragging'); setTimeout(()=>{ draggingEl=null; dragSrc=null; }, 50); }
+
+// ============================================================
+//  CATALOGUE MANAGER
+// ============================================================
+function openCatalogue(){
+  document.getElementById('cat-overlay').classList.add('open');
+  document.getElementById('cat-filter').value = '';
+  editingFilamentCode = null;
+  document.getElementById('add-btn').textContent = 'Add';
+  renderTypeList(); renderCatTable();
+}
+function closeCatalogue(){ document.getElementById('cat-overlay').classList.remove('open'); renderAll(); }
+
+function renderTypeList(){
+  const types = [...new Set(Object.values(catalogue).map(f=>f.type).filter(Boolean))].sort();
+  document.getElementById('typelist').innerHTML = types.map(t=>`<option value="${esc(t)}">`).join('');
+}
+
+let editingFilamentCode = null;
+function renderCatTable(){
+  const q = (document.getElementById('cat-filter').value||'').trim().toLowerCase();
+  const rows = Object.entries(catalogue).filter(([code,f]) =>
+    !q || code.toLowerCase().includes(q) || (f.name||'').toLowerCase().includes(q) || (f.type||'').toLowerCase().includes(q)
+  ).sort((a,b)=> (a[1].type||'').localeCompare(b[1].type||'') || a[0].localeCompare(b[0]));
+  const t = document.getElementById('cat-table');
+  t.innerHTML = `<thead><tr><th></th><th>Code</th><th>Type</th><th>Name</th><th></th></tr></thead><tbody>` +
+    rows.map(([code,f])=>`<tr>
+      <td><div class="sw" style="background:${f.bg}"></div></td>
+      <td style="font-weight:700">${esc(code)}</td>
+      <td>${esc(f.type||'')}</td>
+      <td>${esc(f.name)}</td>
+      <td style="white-space:nowrap; text-align:right">
+        <button class="btn sm" onclick="editFilament('${code}')">Edit</button>
+        <button class="btn sm danger" onclick="deleteFilament('${code}')">✕</button>
+      </td>
+    </tr>`).join('') + `</tbody>`;
+  document.getElementById('cat-total').textContent = Object.keys(catalogue).length + ' filaments';
+}
+
+function saveFilament(){
+  const code = normCode(document.getElementById('add-code').value);
+  const type = document.getElementById('add-type').value.trim();
+  const name = document.getElementById('add-name').value.trim();
+  const bg = document.getElementById('add-bg').value;
+  const text = document.getElementById('add-text').value;
+  if(!code){ toast('Enter a code (e.g. TL6039)'); return; }
+  if(!name){ toast('Enter a colour name'); return; }
+  if(editingFilamentCode && editingFilamentCode !== code){ delete catalogue[editingFilamentCode]; }
+  catalogue[code] = { type, name, bg, ...(text!=='auto' ? {text} : {}) };
+  // reset form
+  document.getElementById('add-code').value='';
+  document.getElementById('add-name').value='';
+  document.getElementById('add-text').value='auto';
+  editingFilamentCode = null;
+  document.getElementById('add-btn').textContent = 'Add';
+  renderTypeList(); renderCatTable(); save();
+  toast(code + ' saved');
+}
+function editFilament(code){
+  const f = catalogue[code];
+  document.getElementById('add-code').value = code;
+  document.getElementById('add-type').value = f.type||'';
+  document.getElementById('add-name').value = f.name||'';
+  document.getElementById('add-bg').value = /^#[0-9a-f]{6}$/i.test(f.bg)?f.bg:'#cccccc';
+  document.getElementById('add-text').value = f.text||'auto';
+  editingFilamentCode = code;
+  document.getElementById('add-btn').textContent = 'Save changes';
+  document.getElementById('add-code').focus();
+}
+function deleteFilament(code){
+  const used = state.rows.some(r=>r.blocks.includes(code));
+  const msg = used ? code+' is placed on the shelf. Delete from catalogue and clear those slots?' : 'Delete '+code+'?';
+  if(!confirm(msg)) return;
+  delete catalogue[code];
+  if(used) state.rows.forEach(r=>r.blocks.forEach((c,i)=>{ if(c===code) r.blocks[i]=null; }));
+  renderCatTable(); renderTypeList(); save();
+}
+
+// ============================================================
+//  IMPORT / EXPORT / RESET
+// ============================================================
+function exportData(){
+  const blob = new Blob([JSON.stringify({catalogue,state},null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'filament-shelf-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+function importData(input){
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if(data.catalogue && data.state){ catalogue=data.catalogue; state=data.state; bindInputs(); renderAll(); save(); toast('Backup loaded'); }
+      else toast('Not a valid backup file');
+    } catch(e){ toast('Could not read file'); }
+    input.value='';
+  };
+  reader.readAsText(file);
+}
+function loadSample(){
+  if(!confirm('Load the original SUNLU sample layout? This replaces the current shelf (catalogue is kept).')) return;
+  Object.assign(catalogue, JSON.parse(JSON.stringify(SEED_CATALOGUE)));
+  state = layoutToState(SAMPLE_LAYOUT);
+  bindInputs(); renderAll();
+}
+function clearLayout(){
+  if(!confirm('Empty every slot? (Rows and catalogue are kept.)')) return;
+  state.rows.forEach(r => r.blocks = r.blocks.map(()=>null));
+  renderAll();
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+function bindInputs(){
+  document.getElementById('in-title').value = state.title;
+  document.getElementById('in-footer').value = state.footer;
+  document.getElementById('in-credit').value = state.credit;
+}
+function wireInputs(){
+  document.getElementById('in-title').addEventListener('input', e=>{ state.title=e.target.value; render(); });
+  document.getElementById('in-footer').addEventListener('input', e=>{ state.footer=e.target.value; render(); });
+  document.getElementById('in-credit').addEventListener('input', e=>{ state.credit=e.target.value; render(); });
+  document.getElementById('slot-overlay').addEventListener('click', e=>{ if(e.target.id==='slot-overlay') closeSlot(); });
+  document.getElementById('cat-overlay').addEventListener('click', e=>{ if(e.target.id==='cat-overlay') closeCatalogue(); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeSlot(); document.getElementById('cat-overlay').classList.remove('open'); }});
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  load();
+  bindInputs();
+  wireInputs();
+  renderAll();
+});
+</script>
+</body>
+</html>
