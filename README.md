@@ -16,7 +16,7 @@ Filament ranges change constantly — new colours get added, spools get moved ar
 - **Drag to rearrange.** Drag any filament onto another slot to swap their positions.
 - **Auto-organise.** One click groups filaments — by **brand + type**, **type**, or **brand** — and sorts each group in ascending CAT-number order, either one group per row or reflowed into your existing rows.
 - **Flexible grid.** Add/remove rows, reorder rows, and set how many slots each row has.
-- **Built-in catalogue of 230 filaments** scraped from Jaycar NZ — every current **SUNLU** (101), **Elegoo** (108) and **Slic3D** (21) filament, across PLA, PLA+, Silk, Matte, Galaxy, PETG, ABS, ASA, TPU, PVB, wood, glow and carbon-fibre lines. Add, edit or delete filaments as the range changes; light/dark text is auto-chosen from the colour's brightness (with a manual override).
+- **Built-in catalogue of 256 filaments** scraped from Jaycar NZ — every current **1kg / 1.75mm** filament roll they stock: **Elegoo** (110), **SUNLU** (102), **Slic3D** (21), **eSUN** (11), **Creality** (8) and **Protech** (4), across PLA, PLA+, Silk, Matte, Galaxy, PETG, ABS, ABS+, ASA, TPU, PVB, PA/CF, wood, glow and carbon-fibre lines. (Non-1kg spools — Flashforge 600g, 250/500g rolls, pen packs — are deliberately excluded.) Add, edit or delete filaments as the range changes; light/dark text is auto-chosen from the colour's brightness (with a manual override).
 - **Auto-save + backup.** Your layout and catalogue are saved in the browser automatically. Export/Import a JSON backup to keep it safe or move it to another computer.
 - **Print / Save as PDF.** One click produces an A4 portrait sheet ready to print.
 
